@@ -24,7 +24,7 @@
 #include "xpider_control.h"
 #include "xpider_inside_protocol.h"
 
-#define CONTROLLER_VERSION "3.1.0"
+#define CONTROLLER_VERSION "2.3.0"
 
 Arduhdlc *g_hdlc;
 XpiderIMU *g_xpider_imu;
@@ -69,7 +69,7 @@ void SetRotate(int8_t speed) {
 }
 
 void SetEye(uint8_t angle) {
-  KillAutoMove();
+  // KillAutoMove();
   g_xpider_control->SetCameraAngle(angle);
 }
 
@@ -81,8 +81,6 @@ void SetFrontLeds(const uint8_t leds[6]) {
 void GetRegister(XpiderInsideProtocol::RegisterIndex register_index) {
   switch(register_index) {
     case XpiderInsideProtocol::kControllerVersion: {
-      uint8_t led_a[6] = {20, 20, 20, 0, 20, 20};
-      g_xpider_control->SetFrontLeds(led_a);
       String temp = CONTROLLER_VERSION;
       g_xpider_inside_protocol.RegisterResponse(register_index, temp.c_str(), temp.length()+1);
       break;
@@ -116,14 +114,15 @@ void WaitNetWithBlink() {
 }
 
 void setup() {
-  g_hdlc = new Arduhdlc(&sendframe, &frameHandler, 256);
-
-  g_xpider_imu = XpiderIMU::instance();
-  g_xpider_imu->Initialize();
+  Serial.begin(9600);
 
   g_xpider_control = XpiderControl::instance();
   g_xpider_control->Initialize();
 
+  g_xpider_imu = XpiderIMU::instance();
+  g_xpider_imu->Initialize();
+
+  g_hdlc = new Arduhdlc(&sendframe, &frameHandler, 256);
   XpiderInsideProtocol::CallbackListStruct callback_list;
   callback_list.move = &SetMove;
   callback_list.step = &SetStep;
@@ -137,8 +136,6 @@ void setup() {
   TaskInitialize(&g_xpider_inside_protocol, g_xpider_control, g_xpider_imu, g_hdlc);
 
   WaitNetWithBlink();
-
-  Serial.begin(9600);
 }
 
 void loop() {

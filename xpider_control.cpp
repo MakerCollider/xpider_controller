@@ -59,6 +59,11 @@ XpiderControl* XpiderControl::instance() {
 }
 
 void XpiderControl::Initialize() {
+  front_leds_ = new Adafruit_NeoPixel(2, LED_FRONT, NEO_GRB + NEO_KHZ800);
+  front_leds_->begin();
+  front_leds_->clear();
+  front_leds_->show();
+
   pinMode(MOTOR_F_1, OUTPUT);
   pinMode(MOTOR_F_2, OUTPUT);
 
@@ -84,11 +89,6 @@ void XpiderControl::Initialize() {
   // Initialize hall sensor 
   pinMode(STEP_HALL_INT, INPUT);
   attachInterrupt(digitalPinToInterrupt(STEP_HALL_INT), StepCounterHandler, FALLING);
-
-  front_leds_ = new Adafruit_NeoPixel(2, LED_FRONT, NEO_GRB + NEO_KHZ800);
-  front_leds_->begin();
-  front_leds_->clear();
-  front_leds_->show();
 
   StopWalking();
   StopRotating();
