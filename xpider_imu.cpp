@@ -22,11 +22,11 @@
 XpiderIMU* XpiderIMU::instance_ = NULL;
 
 XpiderIMU::XpiderIMU() {
-  
+
 }
 
 XpiderIMU::~XpiderIMU() {
-  
+
 }
 
 XpiderIMU* XpiderIMU::instance() {
@@ -38,6 +38,8 @@ XpiderIMU* XpiderIMU::instance() {
 }
 
 bool XpiderIMU::Initialize() {
+  dmp_ready_ = false;
+
   Wire.begin();
   Wire.setClock(400000);
 
@@ -77,22 +79,29 @@ bool XpiderIMU::Initialize() {
     // 1 = initial memory load failed
     // 2 = DMP configuration updates failed
     // (if it's going to break, usually the code will be 1)
-    // Serial.print(F("DMP Initialization failed (code "));
-    // Serial.print(device_status_);
-    // Serial.println(F(")"));
+    DEBUG_PRINT(F("DMP Initialization failed (code "));
+    DEBUG_PRINT(device_status_);
+    DEBUG_PRINTLN(F(")"));
   }
   return true;
 }
 
 void XpiderIMU::GetYawPitchRoll(float in_data[3]) {
   // if programming failed, don't try to do anything
-  if (!dmp_ready_) return;
+  if (dmp_ready_ == false) {
+    DEBUG_PRINTLN("DMP not ready");
+    return;
+  }
 
   while(1) {
+    DEBUG_PRINT("IMU: get int status...");
     mpu_int_status_ = mpu_.getIntStatus();
+    DEBUG_PRINTLN("Done");
     
     // get current FIFO count
+    DEBUG_PRINT("IMU: get fifo count...");
     fifo_count_ = mpu_.getFIFOCount();
+    DEBUG_PRINTLN("Done");
   
 //    Serial.print("count: ");
 //    Serial.print(fifo_count_);
@@ -105,28 +114,36 @@ void XpiderIMU::GetYawPitchRoll(float in_data[3]) {
     if ((mpu_int_status_ & 0x10) || fifo_count_ == 1024) {
       // reset so we can continue cleanly
       mpu_.resetFIFO();
-      // Serial.println(F("FIFO overflow!"));
+      DEBUG_PRINTLN(F("FIFO overflow!"));
       memset(in_data, 0, sizeof(float)*3);
     // otherwise, check for DMP data ready interrupt (this should happen frequently)
     } else if (mpu_int_status_ & 0x02) {
       // wait for correct available data length, should be a VERY short wait
+      DEBUG_PRINT("IMU: Wait for enough bytes...");
       while (fifo_count_ < packet_size_) fifo_count_ = mpu_.getFIFOCount();
+      DEBUG_PRINTLN("Done");
   
       // read a packet from FIFO
+      DEBUG_PRINT("IMU: read packet...");
       mpu_.getFIFOBytes(fifo_buffer_, packet_size_);
+      DEBUG_PRINTLN("Done");
       
       // track FIFO count here in case there is > 1 packet available
       // (this lets us immediately read more without waiting for an interrupt)
       fifo_count_ -= packet_size_;
   
+      DEBUG_PRINT("IMU: Calculate YPR");
       mpu_.dmpGetQuaternion(&quaternion_, fifo_buffer_);
       mpu_.dmpGetGravity(&gravity_, &quaternion_);
       mpu_.dmpGetYawPitchRoll(in_data, &quaternion_, &gravity_);
+      DEBUG_PRINTLN("Done");
 
       for(int i=0; i<3; i++) {
         in_data[i] = in_data[i]<0 ? in_data[i]+PI*2.0 : in_data[i];
       }
       break;
+    } else {
+      DEBUG_PRINTLN("IMU: unknown");
     }
   }
 }

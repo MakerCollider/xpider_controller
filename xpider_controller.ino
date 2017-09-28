@@ -145,5 +145,6 @@ void loop() {
   /* 
    * Execute each task with defined period
    */
+  DEBUG_PRINTLN("loop");
   TaskUpdate();
 }
